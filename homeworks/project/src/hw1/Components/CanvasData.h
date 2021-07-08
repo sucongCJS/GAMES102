@@ -18,8 +18,9 @@ struct CanvasData {
 	bool opt_gauss{ false };
 	bool opt_least_squares{ false };
 	bool opt_ridge_regression { false };
-	bool opt_equidistant_parameterization{ true };
+	bool opt_equidistant_parameterization{ false };
 	bool opt_chordal_parameterization{ true };
+	bool opt_centripetal_parameterization{ true };
 
 	std::vector<ImVec2> lagrangeResults;
 	std::vector<ImVec2> gaussResults;
@@ -27,6 +28,7 @@ struct CanvasData {
 	std::vector<ImVec2> ridgeRegressionResults;
 	std::vector<ImVec2> equidistantParameterizationResults;
 	std::vector<ImVec2> chordalParameterizationResults;
+	std::vector<ImVec2> centripetalParameterizationResults;
 
 	float gaussTheta = 100;
 	int leastSquaresM = 1; // 多项式数 m-1为最高次数幂

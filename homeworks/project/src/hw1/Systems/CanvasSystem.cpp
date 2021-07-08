@@ -122,12 +122,23 @@ void equidistantParameterization(std::vector<Ubpa::pointf2>points, std::vector<I
 void chordalParameterization(std::vector<Ubpa::pointf2>points, std::vector<ImVec2>& results)
 {
 	int size = points.size();
-	float distance = 1.0f / (size - 1);
+	float sum_distance = 0;
+	std::vector<float> distances(size, 0.0);
 	std::vector<float> t(size, 0.0);  // t
 
 	for (size_t i = 1; i < size; ++i)
 	{
-		t[i] = t[i - 1] + distance;
+		float x1 = points[i][0];
+		float y1 = points[i][1];
+		float x2 = points[i-1][0];
+		float y2 = points[i-1][1];
+		distances[i] = distances[i - 1] + pow(x1 - x2, 2) + pow(y1 - y2, 2);
+		sum_distance += distances.back();
+	}
+	
+	for (size_t i = 1; i < size; ++i)
+	{
+		t[i] = distances[i] / sum_distance;
 	}
 
 	std::vector<Ubpa::pointf2> xt;
@@ -143,6 +154,44 @@ void chordalParameterization(std::vector<Ubpa::pointf2>points, std::vector<ImVec
 		results.push_back(ImVec2(lagrange(xt, i), lagrange(yt, i)));
 	}
 }
+
+void centripetalParameterization(std::vector<Ubpa::pointf2>points, std::vector<ImVec2>& results)
+{
+	int size = points.size();
+	float sum_distance = 0;
+	std::vector<float> distances(size, 0.0);
+	std::vector<float> t(size, 0.0);  // t
+
+	for (size_t i = 1; i < size; ++i)
+	{
+		float x1 = points[i][0];
+		float y1 = points[i][1];
+		float x2 = points[i - 1][0];
+		float y2 = points[i - 1][1];
+		distances[i] = distances[i - 1] + sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
+		sum_distance += distances.back();
+	}
+
+	for (size_t i = 1; i < size; ++i)
+	{
+		t[i] = distances[i] / sum_distance;
+	}
+
+	std::vector<Ubpa::pointf2> xt;
+	std::vector<Ubpa::pointf2> yt;
+	for (size_t i = 0; i < size; ++i)
+	{
+		xt.push_back(Ubpa::pointf2(t[i], points[i][0]));
+		yt.push_back(Ubpa::pointf2(t[i], points[i][1]));
+	}
+
+	for (float i = 0; i <= 1; i += 0.01)
+	{
+		results.push_back(ImVec2(lagrange(xt, i), lagrange(yt, i)));
+	}
+}
+
+
 
 /*
 offset: 偏移量, 一般是画布的原点位置
@@ -199,6 +248,7 @@ void CanvasSystem::OnUpdate(Ubpa::UECS::Schedule& schedule) {
 
 			ImGui::Checkbox("Equidistant Parameterization", &data->opt_equidistant_parameterization);
 			ImGui::Checkbox("Chordal Parameterization", &data->opt_chordal_parameterization);
+			ImGui::Checkbox("Centripetal Parameterization", &data->opt_centripetal_parameterization);
 
 			// Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
 			ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
@@ -307,11 +357,15 @@ void CanvasSystem::OnUpdate(Ubpa::UECS::Schedule& schedule) {
 					data->equidistantParameterizationResults.clear();
 					equidistantParameterization(data->points, data->equidistantParameterizationResults);
 				}
-
 				if (data->opt_chordal_parameterization) {
 					data->chordalParameterizationResults.clear();
 					chordalParameterization(data->points, data->chordalParameterizationResults);
 				}
+				if (data->opt_centripetal_parameterization) {
+					data->centripetalParameterizationResults.clear();
+					centripetalParameterization(data->points, data->centripetalParameterizationResults);
+				}
+				int _ = data->chordalParameterizationResults.size();  // debug
 			}
 
 			if (data->points.size() >= 2)  // 少于两个点, 画线无意义
@@ -320,14 +374,18 @@ void CanvasSystem::OnUpdate(Ubpa::UECS::Schedule& schedule) {
 				if (data->opt_lagrange)
 					addLine(draw_list, origin, data->lagrangeResults, IM_COL32(64, 128, 255, 255), thickness);  // 画拉格朗日插值的线
 				if (data->opt_gauss)
-					addLine(draw_list, origin, data->gaussResults, IM_COL32(0, 255, 0, 255), thickness);  // 画高斯插值的线
+					addLine(draw_list, origin, data->gaussResults, IM_COL32(128, 64, 0, 255), thickness);  // 画高斯插值的线
 				if (data->opt_least_squares) 
 					addLine(draw_list, origin, data->leastSquaresResults, IM_COL32(255, 128, 128, 255), thickness);  // 画最小二乘拟合的线
 				if (data->opt_ridge_regression) 
-					addLine(draw_list, origin, data->ridgeRegressionResults, IM_COL32(255, 255, 0, 255), thickness);  // 画最岭回归拟合的线
+					addLine(draw_list, origin, data->ridgeRegressionResults, IM_COL32(128, 128, 255, 255), thickness);  // 画最岭回归拟合的线
 
 				if (data->opt_equidistant_parameterization)
-					addLine(draw_list, origin, data->equidistantParameterizationResults, IM_COL32(255, 0, 0, 255), thickness);
+					addLine(draw_list, origin, data->equidistantParameterizationResults, IM_COL32(255, 128, 0, 255), thickness);
+				if (data->opt_chordal_parameterization)
+					addLine(draw_list, origin, data->chordalParameterizationResults, IM_COL32(0, 255, 128, 255), thickness);
+				if (data->opt_centripetal_parameterization)
+					addLine(draw_list, origin, data->centripetalParameterizationResults, IM_COL32(128, 0, 255, 255), thickness);
 			}
 		}
 
